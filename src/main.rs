@@ -12,6 +12,7 @@ pub mod layout;
 pub mod style;
 pub mod painting;
 pub mod pdf;
+pub mod ssml;
 
 fn main() {
     // Parse command-line options:
@@ -46,29 +47,31 @@ fn main() {
     let root_node = html::parse(html);
     let stylesheet = css::parse(css);
     let style_root = style::style_tree(&root_node, &stylesheet);
-    let layout_root = layout::layout_tree(&style_root, viewport);
+    let ssml_str = ssml::render_ssml(style_root, 0);
+    println!("{}", ssml_str);
+    // let layout_root = layout::layout_tree(&style_root, viewport);
 
-    // Create the output file:
-    let filename = str_arg("o", if png { "output.png" } else { "output.pdf" });
-    let mut file = BufWriter::new(File::create(&filename).unwrap());
+    // // Create the output file:
+    // let filename = str_arg("o", if png { "output.png" } else { "output.pdf" });
+    // let mut file = BufWriter::new(File::create(&filename).unwrap());
 
-    // Write to the file:
-    let ok = if png {
-        let canvas = painting::paint(&layout_root, viewport.content);
-        let (w, h) = (canvas.width as u32, canvas.height as u32);
-        let img = image::ImageBuffer::from_fn(w, h, move |x, y| {
-            let color = canvas.pixels[(y * w + x) as usize];
-            image::Pixel::from_channels(color.r, color.g, color.b, color.a)
-        });
-        image::ImageRgba8(img).save(&mut file, image::PNG).is_ok()
-    } else {
-        pdf::render(&layout_root, viewport.content, &mut file).is_ok()
-    };
-    if ok {
-        println!("Saved output as {}", filename)
-    } else {
-        println!("Error saving output as {}", filename)
-    }
+    // // Write to the file:
+    // let ok = if png {
+    //     let canvas = painting::paint(&layout_root, viewport.content);
+    //     let (w, h) = (canvas.width as u32, canvas.height as u32);
+    //     let img = image::ImageBuffer::from_fn(w, h, move |x, y| {
+    //         let color = canvas.pixels[(y * w + x) as usize];
+    //         image::Pixel::from_channels(color.r, color.g, color.b, color.a)
+    //     });
+    //     image::ImageRgba8(img).save(&mut file, image::PNG).is_ok()
+    // } else {
+    //     pdf::render(&layout_root, viewport.content, &mut file).is_ok()
+    // };
+    // if ok {
+    //     println!("Saved output as {}", filename)
+    // } else {
+    //     println!("Error saving output as {}", filename)
+    // }
 }
 
 fn read_source(filename: String) -> String {
