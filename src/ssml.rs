@@ -14,11 +14,12 @@ fn render_spec_val(val: &Value) -> String {
 fn render_spec_vals(vals: HashMap<String, Value>) -> String {
     let mut result = String::from("");
     for (spec_key, spec_val) in vals {
-        result = format!(
+        let props = format!(
             " {}=\"{}\"",
             spec_key.as_str(),
             render_spec_val(&spec_val).as_str()
         );
+        result.push_str(props.as_str());
     }
     return result;
 }
