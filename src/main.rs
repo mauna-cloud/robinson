@@ -2,7 +2,7 @@ extern crate getopts;
 extern crate image;
 
 use std::default::Default;
-use std::io::{Read, BufWriter};
+use std::io::{Read};
 use std::fs::File;
 
 pub mod css;
@@ -28,11 +28,11 @@ fn main() {
     };
 
     // Choose a format:
-    let png = match &str_arg("f", "png")[..] {
-        "png" => true,
-        "pdf" => false,
-        x => panic!("Unknown output format: {}", x),
-    };
+    // let png = match &str_arg("f", "png")[..] {
+    //     "png" => true,
+    //     "pdf" => false,
+    //     x => panic!("Unknown output format: {}", x),
+    // };
 
     // Read input files:
     let html = read_source(str_arg("h", "examples/test.html"));

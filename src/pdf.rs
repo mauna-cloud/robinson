@@ -14,14 +14,14 @@ pub fn render<W: Write + Seek>(layout_root: &LayoutBox, bounds: Rect, file: &mut
     -> io::Result<()>
 {
     let display_list = build_display_list(layout_root);
-    let mut pdf = try!(Pdf::new(file));
+    let mut pdf = Pdf::new(file)?;
     // We map CSS pt to Poscript points (which is the default length unit in PDF).
-    try!(pdf.render_page(px_to_pt(bounds.width), px_to_pt(bounds.height), |output| {
+    pdf.render_page(px_to_pt(bounds.width), px_to_pt(bounds.height), |output| {
         for item in display_list {
-            try!(render_item(&item, output));
+            render_item(&item, output)?;
         }
         Ok(())
-    }));
+    })?;
     pdf.finish()
 }
 
@@ -50,7 +50,7 @@ const PAGES_OBJECT_ID: usize = 2;
 impl<'a, W: Write + Seek> Pdf<'a, W> {
     fn new(output: &'a mut W) -> io::Result<Pdf<'a, W>> {
         // FIXME: Find out the lowest version that contains the features we’re using.
-        try!(output.write_all(b"%PDF-1.7\n%\xB5\xED\xAE\xFB\n"));
+        output.write_all(b"%PDF-1.7\n%\xB5\xED\xAE\xFB\n")?;
         Ok(Pdf {
             output: output,
             // Object ID 0 is special in PDF.
