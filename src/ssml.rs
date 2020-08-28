@@ -1,8 +1,65 @@
 use css::Value;
-use dom::{ElementData, NodeType};
+use dom::{AttrMap, ElementData, NodeType};
 use std::collections::HashMap;
-use style::StyledNode;
 use std::fmt::{Display, Formatter, Result};
+use style::StyledNode;
+
+struct AttrWrapper<'a> {
+    attr_map: &'a AttrMap,
+}
+
+impl Display for AttrWrapper<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let mut res = String::new();
+        for (k, v) in self.attr_map {
+            if k == "class" {
+                continue;
+            }
+            res.push_str(format!(" {}=\"{}\"", k, v.replace("\"", "")).as_str());
+        }
+        return write!(f, "{}", res);
+    }
+}
+
+struct Tag<'a> {
+    tag_name: &'a str,
+    attributes: AttrMap,
+}
+
+impl<'a> Tag<'a> {
+    fn from_attr(attr_name: &str) -> Self {
+        let tag_name = match attr_name {
+            "pitch" | "volume" => "prosody",
+            "voice-family" | "voice-variant" | "voice-gender" => "voice",
+            "level" => "emphasis",
+            _ => "",
+        };
+        Tag {
+            tag_name: tag_name,
+            attributes: AttrMap::new(),
+        }
+    }
+
+    fn add_attr<T: Display>(&mut self, attr_name: &str, attr_val: &T) {
+        self.attributes
+            .insert(attr_name.to_string(), attr_val.to_string());
+    }
+
+    fn wrap<T: Display>(&self, tag: &T, indent_level: usize) -> String {
+        let indent = " ".repeat(indent_level * 2);
+        return format!(
+            "{}<{}{}>\n{}{}</{}>\n",
+            indent,
+            self.tag_name,
+            AttrWrapper {
+                attr_map: &self.attributes
+            },
+            tag,
+            indent,
+            self.tag_name
+        );
+    }
+}
 
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
@@ -12,15 +69,35 @@ impl Display for Value {
             Value::Length(l, _) => write!(f, "{}px", l),
         };
     }
-} 
+}
 
-fn render_attrs<T: Display>(attrs: &HashMap<String, T>) -> String {
-    let mut result = String::new();
+fn render_attrs<T: Display>(attrs: &HashMap<String, T>) -> (Vec<Tag>, String) {
+    let mut result_str = String::new();
+    let mut result_vec: Vec<Tag> = Vec::new();
+    let mut tags: HashMap<String, Tag> = HashMap::new();
     for (k, v) in attrs {
-        let attr_str = format!(" {}=\"{}\"", k, v);
-        result.push_str(attr_str.as_str());
+        if k == "class" {
+            continue;
+        }
+        let mut tag = Tag::from_attr(k);
+        if tag.tag_name != "" {
+            match tags.get_mut(tag.tag_name) {
+                Option::None => {
+                    tag.add_attr(k, v);
+                    tags.insert(tag.tag_name.to_string(), tag);
+                    ();
+                }
+                Option::Some(t) => t.add_attr(k, v),
+            };
+        } else {
+            let attr_str = format!(" {}=\"{}\"", k, v);
+            result_str.push_str(attr_str.as_str());
+        }
     }
-    return result;
+    for (_, v) in tags {
+        result_vec.push(v);
+    }
+    return (result_vec, result_str);
 }
 
 pub fn render_ssml(styled_node: StyledNode, level: usize) -> String {
@@ -38,12 +115,17 @@ pub fn render_ssml(styled_node: StyledNode, level: usize) -> String {
             for child in styled_node.children {
                 children_str.push_str(render_ssml(child, level + 1).as_str());
             }
+            let (_, unspec_attrs) = render_attrs(attrs);
+            let (tags, spec_attrs) = render_attrs(spec_vals);
+            for tag in tags {
+                children_str = tag.wrap(&children_str, level + 1);
+            }
             return format!(
                 "{}<{}{}{}>\n{}{}</{}>\n",
                 indent.as_str(),
                 tag,
-                render_attrs(attrs),
-                render_attrs(spec_vals),
+                unspec_attrs,
+                spec_attrs,
                 children_str,
                 indent.as_str(),
                 tag
